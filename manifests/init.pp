@@ -13,6 +13,7 @@ class buildout {
     #
     # Parameters:
     #   $source  - source from which to grab buildout.cfg
+    #   $path    - relative path for buildout configuration file
     #   $python  - the python interpreter to use
     #   $ensure  - flag to setup or remove the buildout environment
     #
@@ -29,28 +30,51 @@ class buildout {
     #        python => "/path/to/your/python",
     #    }
     #
-    define venv($source, $python='python', $ensure=present) {
+    define venv($source=false, $path=false, $owner=false, $group=false, $python='/usr/bin/python', $ensure=present) {
+        if $path {
+            $config = "$name/buildout.cfg"
+        } else {
+            $config = "$name/buildout.cfg"
+        }
+
+        if $owner != false {
+            File { owner => $owner }
+        }
+        if $group != false {
+            File { group => $group }
+        }
+
         if $ensure == present {
-            exec { "mkdir -p $name":
-                unless => "test -d $name",
+            file { $name:
+                ensure => directory
             }
+            
             file { "$name/bootstrap.py":
                 source => "puppet:///modules/buildout/bootstrap.py",
-                require => Exec["mkdir -p $name"],
+                require => File[$name],
             }
-            file { "$name/buildout.cfg":
-                source => $source,
-                require => Exec["mkdir -p $name"],
+            if $source {
+              file { $config:
+                source  => $source,
+                require => File[$name]
+              }
+            }
+            else {
+                file { $config:
+                    require => File[$name],
+                }
             }
             exec { "${python} $name/bootstrap.py":
-                cwd => $name,
-                require => [File["$name/bootstrap.py"], File["$name/buildout.cfg"]],
-                unless => "test -f $name/bin/buildout",
+                cwd     => $name,
+                require => [File["$name/bootstrap.py"], File[$config]],
+                creates => "$name/bin/buildout",
             }
-            exec { "$name/bin/buildout":
+            exec { "$name/bin/buildout -c $config":
                 cwd => $name,
-                require => Exec["${python} $name/bootstrap.py"],
-                subscribe => File["$name/buildout.cfg"],
+                require => [
+                    Exec["${python} $name/bootstrap.py"],
+                    File[$config]],
+                subscribe => File[$config],
                 refreshonly => true,
             }
         } else {
