@@ -31,7 +31,9 @@ class buildout {
     $owner=false,
     $group=false,
     $python='/usr/bin/python',
-    $ensure=present
+    $ensure=present,
+    $refreshonly=false,
+    $force=false,
   ) {
     if $ensure == present {
       $config = "${name}/${path}"
@@ -73,13 +75,14 @@ class buildout {
         ],
       }
       exec { "${name}/bin/buildout -c ${config}":
-        cwd => "${name}",
-        refreshonly => true,
-        subscribe => [
+        cwd         => "${name}",
+        refreshonly => $refreshonly,
+        force       => $force,
+        subscribe   => [
           File[$config],
           Exec["${python} ${name}/bootstrap.py"],
         ],
-        require => [
+        require    => [
           File[$config],
           Exec["${python} ${name}/bootstrap.py"],
         ],
