@@ -77,7 +77,6 @@ class buildout {
       exec { "${name}/bin/buildout -c ${config}":
         cwd         => "${name}",
         refreshonly => $refreshonly,
-        force       => $force,
         subscribe   => [
           File[$config],
           Exec["${python} ${name}/bootstrap.py"],
